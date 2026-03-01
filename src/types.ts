@@ -105,3 +105,11 @@ export interface ReportSection {
   content: string;
   category: AuditCategory;
 }
+
+export interface SavedGraph {
+  id: string;
+  title: string;
+  imageData: string;
+  config: GraphConfig;
+  timestamp: number;
+}

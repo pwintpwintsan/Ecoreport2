@@ -25,7 +25,7 @@ import {
   PolarRadiusAxis,
   Sankey
 } from 'recharts';
-import { AuditData, AuditCategory, GraphConfig, GraphPurpose } from '../types';
+import { AuditData, AuditCategory, GraphConfig, GraphPurpose, SavedGraph } from '../types';
 import { 
   Settings2, 
   BarChart3, 
@@ -38,12 +38,18 @@ import {
   Clock, 
   HelpCircle,
   ArrowRightLeft,
-  Download
+  Download,
+  Save,
+  Plus
 } from 'lucide-react';
 
 interface Props {
   data: AuditData[];
   category: AuditCategory;
+  onSaveGraph?: (graph: SavedGraph) => void;
+  savedGraphsCount?: number;
+  onRemove?: () => void;
+  isRemovable?: boolean;
 }
 
 const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
@@ -164,7 +170,7 @@ const PURPOSE_MAP: Record<GraphPurpose, { types: string[]; icon: any; usedFor: s
   }
 };
 
-export const GraphGenerator: React.FC<Props> = ({ data, category }) => {
+export const GraphGenerator: React.FC<Props> = ({ data, category, onSaveGraph, savedGraphsCount, onRemove, isRemovable }) => {
   const chartRef = useRef<HTMLDivElement>(null);
   const columns = useMemo(() => (data.length > 0 ? Object.keys(data[0]) : []), [data]);
   
@@ -176,6 +182,11 @@ export const GraphGenerator: React.FC<Props> = ({ data, category }) => {
     yAxis: columns[1] || '',
     category
   });
+
+  // Sync category when it changes from parent
+  React.useEffect(() => {
+    setConfig(prev => ({ ...prev, category }));
+  }, [category]);
 
   const allUsedForOptions = useMemo(() => {
     return Object.entries(PURPOSE_MAP).flatMap(([purpose, info]) => 
@@ -236,6 +247,24 @@ export const GraphGenerator: React.FC<Props> = ({ data, category }) => {
       link.click();
     } catch (err) {
       console.error('Failed to download chart', err);
+    }
+  };
+
+  const handleSave = async () => {
+    if (chartRef.current === null || !onSaveGraph) return;
+
+    try {
+      const dataUrl = await toPng(chartRef.current, { backgroundColor: '#ffffff', cacheBust: true });
+      const savedGraph: SavedGraph = {
+        id: crypto.randomUUID(),
+        title: `${config.type} - ${config.xAxis} vs ${config.yAxis}`,
+        imageData: dataUrl,
+        config: { ...config },
+        timestamp: Date.now()
+      };
+      onSaveGraph(savedGraph);
+    } catch (err) {
+      console.error('Failed to save chart', err);
     }
   };
 
@@ -404,7 +433,16 @@ export const GraphGenerator: React.FC<Props> = ({ data, category }) => {
   const currentPurpose = PURPOSE_MAP[config.purpose];
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden relative group/generator">
+      {isRemovable && (
+        <button 
+          onClick={onRemove}
+          className="absolute top-4 right-4 z-10 p-2 bg-white border border-slate-200 rounded-xl text-slate-400 hover:text-red-500 hover:border-red-100 hover:bg-red-50 transition-all shadow-sm"
+          title="Remove this graph generator"
+        >
+          <Plus className="w-5 h-5 rotate-45" />
+        </button>
+      )}
       <div className="p-6 border-b border-slate-100 bg-slate-50/50">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
           <div className="flex items-center gap-2">
@@ -520,13 +558,22 @@ export const GraphGenerator: React.FC<Props> = ({ data, category }) => {
                   <p className="text-xs text-slate-500">{config.xAxis} vs {config.yAxis}</p>
                 </div>
               </div>
-              <button 
-                onClick={handleDownload}
-                className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
-              >
-                <Download className="w-4 h-4" />
-                Download Chart
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handleSave}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 border border-emerald-700 rounded-xl text-xs font-bold text-white hover:bg-emerald-700 transition-all shadow-sm"
+                >
+                  <Save className="w-4 h-4" />
+                  Save to Report
+                </button>
+                <button 
+                  onClick={handleDownload}
+                  className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all shadow-sm"
+                >
+                  <Download className="w-4 h-4" />
+                  Download
+                </button>
+              </div>
             </div>
             {renderChart()}
           </div>

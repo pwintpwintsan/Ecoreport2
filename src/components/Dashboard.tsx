@@ -3,7 +3,7 @@ import { FileUploader } from './FileUploader';
 import { GraphGenerator } from './GraphGenerator';
 import { ReportContent } from './ReportContent';
 import { AuditForm } from './AuditForm';
-import { AuditData, AuditCategory, AuditFormData } from '../types';
+import { AuditData, AuditCategory, AuditFormData, SavedGraph } from '../types';
 import { 
   Leaf, 
   Users, 
@@ -14,7 +14,8 @@ import {
   Upload,
   BarChart3,
   Sparkles,
-  FileEdit
+  FileEdit,
+  Plus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -48,6 +49,8 @@ export const Dashboard: React.FC = () => {
   const [activeCategory, setActiveCategory] = useState<AuditCategory>('Environmental');
   const [currentStep, setCurrentStep] = useState(1);
   const [auditFormData, setAuditFormData] = useState<AuditFormData | null>(null);
+  const [savedGraphs, setSavedGraphs] = useState<SavedGraph[]>([]);
+  const [activeGraphIds, setActiveGraphIds] = useState<string[]>([crypto.randomUUID()]);
 
   const handleDataLoaded = (newData: AuditData[], name: string) => {
     setData(newData);
@@ -65,6 +68,24 @@ export const Dashboard: React.FC = () => {
     setFileName(null);
     setCurrentStep(1);
     setAuditFormData(null);
+    setSavedGraphs([]);
+    setActiveGraphIds([crypto.randomUUID()]);
+  };
+
+  const handleSaveGraph = (graph: SavedGraph) => {
+    setSavedGraphs(prev => [...prev, graph]);
+  };
+
+  const handleRemoveGraph = (id: string) => {
+    setSavedGraphs(prev => prev.filter(g => g.id !== id));
+  };
+
+  const handleAddActiveGraph = () => {
+    setActiveGraphIds(prev => [...prev, crypto.randomUUID()]);
+  };
+
+  const handleRemoveActiveGraph = (id: string) => {
+    setActiveGraphIds(prev => prev.filter(gid => gid !== id));
   };
 
   const steps = [
@@ -271,7 +292,59 @@ export const Dashboard: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <GraphGenerator data={data} category={activeCategory} />
+                
+                <div className="space-y-8">
+                  {activeGraphIds.map((id) => (
+                    <GraphGenerator 
+                      key={id}
+                      data={data} 
+                      category={activeCategory} 
+                      onSaveGraph={handleSaveGraph}
+                      savedGraphsCount={savedGraphs.length}
+                      onRemove={() => handleRemoveActiveGraph(id)}
+                      isRemovable={activeGraphIds.length > 1}
+                    />
+                  ))}
+                  
+                  <button 
+                    onClick={handleAddActiveGraph}
+                    className="w-full py-6 border-2 border-dashed border-slate-200 rounded-2xl text-slate-400 hover:text-emerald-600 hover:border-emerald-200 hover:bg-emerald-50/50 transition-all flex flex-col items-center justify-center gap-2 group"
+                  >
+                    <div className="p-2 bg-slate-50 rounded-full group-hover:bg-emerald-100 transition-all">
+                      <Plus className="w-6 h-6" />
+                    </div>
+                    <span className="text-sm font-bold uppercase tracking-wider">Add Another Graph to Configure</span>
+                  </button>
+                </div>
+                
+                {savedGraphs.length > 0 && (
+                  <div className="bg-white p-6 rounded-2xl border border-slate-200">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-2">
+                        <BarChart3 className="w-5 h-5 text-emerald-600" />
+                        <h3 className="font-semibold text-slate-800">Saved Graphs ({savedGraphs.length})</h3>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {savedGraphs.map((graph) => (
+                        <div key={graph.id} className="group relative bg-slate-50 rounded-xl border border-slate-100 overflow-hidden hover:shadow-md transition-all">
+                          <img src={graph.imageData} alt={graph.title} className="w-full h-32 object-cover" referrerPolicy="no-referrer" />
+                          <div className="p-3">
+                            <p className="text-xs font-bold text-slate-800 truncate">{graph.title}</p>
+                            <p className="text-[10px] text-slate-500">{graph.config.type} • {graph.config.category}</p>
+                          </div>
+                          <button 
+                            onClick={() => handleRemoveGraph(graph.id)}
+                            className="absolute top-2 right-2 p-1.5 bg-white/90 backdrop-blur rounded-lg text-red-500 opacity-0 group-hover:opacity-100 transition-all shadow-sm hover:bg-red-50"
+                          >
+                            <Plus className="w-3 h-3 rotate-45" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div className="flex justify-center gap-4">
                   <button 
                     onClick={() => setCurrentStep(2)}
@@ -302,6 +375,7 @@ export const Dashboard: React.FC = () => {
                   data={data} 
                   category={activeCategory} 
                   auditFormData={auditFormData} 
+                  savedGraphs={savedGraphs}
                   onGoToStep={setCurrentStep}
                 />
                 <div className="flex justify-center">

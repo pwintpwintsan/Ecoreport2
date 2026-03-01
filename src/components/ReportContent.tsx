@@ -1,18 +1,19 @@
 import React, { useState } from 'react';
 import ReactMarkdown from 'react-markdown';
-import { AuditData, AuditCategory, AuditFormData } from '../types';
+import { AuditData, AuditCategory, AuditFormData, SavedGraph } from '../types';
 import { generateAuditInsights } from '../services/geminiService';
-import { Sparkles, FileText, Loader2, Download, BarChart3 } from 'lucide-react';
+import { Sparkles, FileText, Loader2, Download, BarChart3, Image as ImageIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 interface Props {
   data: AuditData[];
   category: AuditCategory;
   auditFormData: AuditFormData | null;
+  savedGraphs: SavedGraph[];
   onGoToStep: (step: number) => void;
 }
 
-export const ReportContent: React.FC<Props> = ({ data, category, auditFormData, onGoToStep }) => {
+export const ReportContent: React.FC<Props> = ({ data, category, auditFormData, savedGraphs, onGoToStep }) => {
   const [report, setReport] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -162,24 +163,61 @@ export const ReportContent: React.FC<Props> = ({ data, category, auditFormData, 
               ">
                 <ReactMarkdown>{report}</ReactMarkdown>
 
+                {/* Saved Graphs Section */}
+                {savedGraphs.length > 0 && (
+                  <div className="mt-12 space-y-12">
+                    <h2 className="text-xl font-bold uppercase tracking-wider text-emerald-800 border-b border-slate-200 pb-4">
+                      Appendix: Performance Visualizations
+                    </h2>
+                    <div className="space-y-16">
+                      {savedGraphs.map((graph, index) => (
+                        <div key={graph.id} className="space-y-4 break-inside-avoid">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wide">
+                              Figure {index + 1}: {graph.title}
+                            </h3>
+                            <span className="text-[10px] text-slate-400 font-mono">
+                              {new Date(graph.timestamp).toLocaleString()}
+                            </span>
+                          </div>
+                          <div className="bg-white border border-slate-200 rounded-lg p-4 shadow-sm">
+                            <img 
+                              src={graph.imageData} 
+                              alt={graph.title} 
+                              className="w-full h-auto max-h-[400px] object-contain"
+                              referrerPolicy="no-referrer"
+                            />
+                          </div>
+                          <p className="text-xs text-slate-500 italic text-center">
+                            {graph.config.type} analysis for {graph.config.category} performance.
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Graph Reference Section */}
                 <div className="mt-16 p-8 bg-slate-50 rounded-2xl border border-slate-200 border-dashed print:hidden">
                   <div className="flex items-start gap-4">
                     <div className="p-3 bg-white rounded-xl shadow-sm">
-                      <BarChart3 className="w-6 h-6 text-emerald-600" />
+                      {savedGraphs.length > 0 ? <ImageIcon className="w-6 h-6 text-emerald-600" /> : <BarChart3 className="w-6 h-6 text-emerald-600" />}
                     </div>
                     <div className="flex-1">
-                      <h4 className="text-lg font-bold text-slate-900 mb-1">Missing Graphs?</h4>
+                      <h4 className="text-lg font-bold text-slate-900 mb-1">
+                        {savedGraphs.length > 0 ? 'Manage Your Visuals' : 'Missing Graphs?'}
+                      </h4>
                       <p className="text-sm text-slate-500 mb-4">
-                        The AI report provides the analysis, but professional OSE submissions require visual evidence. 
-                        Go back to the Visualization step to capture and export your performance charts.
+                        {savedGraphs.length > 0 
+                          ? `You have ${savedGraphs.length} graphs included in this report. You can add more or change them in the visualization step.`
+                          : 'The AI report provides the analysis, but professional OSE submissions require visual evidence. Go back to the Visualization step to capture and export your performance charts.'}
                       </p>
                       <button 
                         onClick={() => onGoToStep(3)}
                         className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-bold text-slate-700 hover:bg-slate-50 transition-all flex items-center gap-2"
                       >
                         <BarChart3 className="w-4 h-4" />
-                        Go to Visualization
+                        {savedGraphs.length > 0 ? 'Add More Graphs' : 'Go to Visualization'}
                       </button>
                     </div>
                   </div>
